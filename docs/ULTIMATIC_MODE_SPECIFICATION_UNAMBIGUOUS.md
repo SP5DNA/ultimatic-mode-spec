@@ -1,6 +1,7 @@
 # Ultimatic Mode Specification (Unambiguous, Platform-Agnostic)
 
 **Author:** Paweł (SP5DNA) + Claude AI
+
 **Status:** Normative core spec (Sections 1–14) + informative annexes (A–D)
 
 ---
