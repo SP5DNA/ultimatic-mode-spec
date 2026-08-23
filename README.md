@@ -1,5 +1,3 @@
-*English · [Polski][1]*
-
 # Ultimatic Mode Specification
 
 A deterministic, implementation-independent specification of \*\*Ultimatic keyer
