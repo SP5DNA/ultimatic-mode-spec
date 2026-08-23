@@ -1,3 +1,5 @@
+*English · [Polski][1]*
+
 # Ultimatic Mode Specification
 
 A deterministic, implementation-independent specification of \*\*Ultimatic keyer
@@ -7,7 +9,7 @@ ambiguity in edge cases and providing testable normative behavior.
 
 ## Contents
 
-- [`docs/ULTIMATIC_MODE_SPECIFICATION_UNAMBIGUOUS.md`][1]
+- [`docs/ULTIMATIC_MODE_SPECIFICATION_UNAMBIGUOUS.md`][2]
   — the primary normative spec: core requirements (Sections 1–14) plus
   informative annexes (A–D):
   - **Annex A** — the original 1955 source text this spec formalizes, with a
@@ -15,11 +17,28 @@ ambiguity in edge cases and providing testable normative behavior.
   - **Annex B** — reference pseudocode, written so the `last_touched` pointer
 	is explicit and live.
   - **Annex C** — three worked timing examples (C.1–C.3), each illustrated
-	with a timing diagram:
-
-	(tbl)
-
+	with a timing diagram (previewed below).
   - **Annex D** — an implementation checklist.
+
+### Annex C previews
+
+**C.1** — Letter N, five conformant paddle timelines converging on one output (`T3`/`T7`)
+
+![C.1][image-1]
+
+**C.2** — Letter D, re-closure of the squeeze paddle (`T5`)
+
+![C.2][image-2]
+
+**C.3** — the T8 worked trace: re-closure of the *first* paddle while the second stays down
+
+![C.3][image-3]
+
+This repository currently holds the primary spec only. The companion
+documents it refers to — a historical draft (`ultimatic_specification.md`)
+and an RFC-style conformance checklist
+(`ULTIMATIC_MODE_SPECIFICATION_RFC_STYLE.md`) — can be added alongside it in
+`docs/` if/when they're ready to publish.
 
 ## Why this exists
 
@@ -41,7 +60,7 @@ Section 12) are welcome.
 
 ## License
 
-Licensed under [CC BY 4.0][2] — see that file for the full text. You
+Licensed under [CC BY 4.0][3] — see that file for the full text. You
 are free to share and adapt this specification for any purpose, including
 implementing it in hardware or software, provided you credit the original
 authorship.
@@ -50,5 +69,10 @@ authorship.
 
 Paweł (SP5DNA) + Claude AI
 
-[1]:	docs/ULTIMATIC_MODE_SPECIFICATION_UNAMBIGUOUS.md
-[2]:	LICENSE
+[1]:	README.pl.md
+[2]:	docs/ULTIMATIC_MODE_SPECIFICATION_UNAMBIGUOUS.md
+[3]:	LICENSE
+
+[image-1]:	docs/annex-c1-timing-diagram.png
+[image-2]:	docs/annex-c2-timing-diagram.png
+[image-3]:	docs/annex-c3-timing-diagram.png
