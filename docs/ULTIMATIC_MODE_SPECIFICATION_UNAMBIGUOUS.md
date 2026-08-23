@@ -2,6 +2,7 @@
 
 **Author:** Paweł (SP5DNA)
 **Status:** Normative core spec (Sections 1–14) + informative annexes (A–D)
+**Provenance:** This document is the primary normative spec of the Ultimatic-mode document set. It supersedes `ultimatic_specification.md` as the implementation reference; that document's historical text, worked timing examples, and checklist have been folded in below as informative annexes so nothing is lost. See also `ULTIMATIC_MODE_SPECIFICATION_RFC_STYLE.md` for the same requirements expressed as a compact RQ-ID checklist, useful for conformance audits.
 
 ---
 
@@ -349,6 +350,7 @@ void ultimatic_update(bool dit_paddle, bool dah_paddle) {
 }
 ```
 
+**Why this differs from the earlier draft pseudocode** (formerly in `ultimatic_specification.md` §4): that version used unconditional priority `if (dah_memory) ... else if (dit_memory) ...` in `IDLE`, with no `last_touched` at all. It satisfies Sections 5, 7 (partially), and 9–10, but not Section 8 Priority 1/3 or T8, because it has no way to prefer DIT over DAH when both memories are set from a DIT edge arriving second. Any implementation modeled directly on that earlier pseudocode should be re-checked against T8.
 
 ---
 
@@ -361,14 +363,14 @@ Reference speed for this annex only: **15 WPM**, dit unit = 80 ms, dah = 240 ms,
 Five input timelines, all conformant, all producing **DAH (0–240 ms), SPACE (240–320 ms), DIT (320–400 ms)**:
 
 | Scenario | DAH paddle | DIT paddle | Note                                                |
-| -------- | ---------- | ---------- | --------------------------------------------------- |
+| -------- | ---------- | ---------- | ---------------------------------------------------- |
 | 1        | 0–160 ms   | 10–80 ms   | plain squeeze during DAH                            |
 | 2        | 0–160 ms   | 200–210 ms | squeeze arrives **during SPACE** (T7)               |
 | 3        | 0–340 ms   | 250–260 ms | DAH held past its own element into the space        |
 | 4        | 0–420 ms   | 300–410 ms | DAH held through the whole character                |
 | 5        | 0–430 ms   | 300–470 ms | DAH held through character + partial trailing space |
 
-![Annex C.1 timing diagram — five conformant DAH/DIT paddle timelines for letter N, all converging on the same DAH–space–DIT output][image-1]
+![Annex C.1 timing diagram — five conformant DAH/DIT paddle timelines for letter N, all converging on the same DAH–space–DIT output](annex-c1-timing-diagram.png)
 
 *Figure C.1 — the DAH rising edge at 0 ms always wins the first element; the DIT rising edge only needs to land before the IDLE decision at 320 ms (dashed line), and MAY occur during `SPACING` (scenario 2). Scenarios 3–5 hold DAH well past its own element for illustration only — memory is consumed at element start, not release, so the extra hold changes nothing.*
 
@@ -381,29 +383,55 @@ Takeaway: the DIT rising edge only needs to land before the IDLE decision that f
 | DAH    | held 0–470 ms                                          |
 | DIT    | pressed 300–340 ms, released, pressed again 380–420 ms |
 
-![Annex C.2 timing diagram — DAH held continuously while DIT is pressed twice, each press independently guaranteeing its own element][image-2]
+![Annex C.2 timing diagram — DAH held continuously while DIT is pressed twice, each press independently guaranteeing its own element](annex-c2-timing-diagram.png)
 
 Result: **DAH (0–240), SPACE, DIT (320–400), SPACE, DIT (400... next cycle)** → decoded as **D** (`-··`).
 
 Each DIT rising edge (at 300 ms and again at 380 ms) independently sets `dit_memory` and guarantees its own element — this is the Section 5/T5 edge guarantee applied twice in one character. (An earlier draft of this example mislabeled the result as "`--`"; the correct decode is `-··` = D, matching the two independently-guaranteed DIT elements.)
 
+**A second T5 shape — indefinitely held paddle, widely spaced taps.** The same guarantee holds even when the held paddle never releases at all and the taps are spread much further apart:
+
+| Paddle | Timeline                                              |
+| ------ | ------------------------------------------------------ |
+| DAH    | 0 ms onward, **held continuously, never released**   |
+| DIT    | 10–160 ms, released, **560–640 ms** (reclosure)       |
+
+![Annex C.2b timing diagram — DAH held continuously from 0 ms with no release, while DIT is pressed at 10 ms and re-closed at 560 ms, each edge independently guaranteeing its own element](annex-c2b-timing-diagram.png)
+
+Result: **DAH (0–240), SPACE, DIT (320–400), SPACE, DAH (480–720), SPACE, DIT (800–880), SPACE, DAH (960 ms onward, repeats)** — an open-ended stream rather than a single letter, since DAH never releases.
+
+1. `0 ms`: DAH edge → `dah_memory=true`, `last_touched=DAH`. State is IDLE, so this immediately triggers a decision → sends DAH (0–240 ms).
+2. `10 ms`: DIT edge arrives mid-DAH-send → `dit_memory=true`, `last_touched=DIT`. Captured per Section 9.
+3. `240–320 ms`: SPACING, then IDLE decision: `dah_memory` was already consumed at DAH's start (0 ms), so only `dit_memory` is set → Priority 2 → sends DIT (320–400 ms).
+4. `400–480 ms`: SPACING, then IDLE decision: `dit_memory` was consumed at 320 ms and no new edge has occurred; DAH is still held (it never releases) → Priority 4 (single paddle held) → sends DAH again (480–720 ms).
+5. `560 ms`: DIT is re-closed — **while DAH is still held**. A fresh rising edge: `dit_memory=true`, `last_touched=DIT`. Captured mid-DAH-send.
+6. `720–800 ms`: SPACING, then IDLE decision: `dah_memory` was consumed at 480 ms, so only `dit_memory` is set (from the edge at 560 ms) → Priority 2 → sends DIT (800–880 ms).
+7. `880–960 ms`: SPACING, then IDLE decision: no memory is set, and DAH is still held → Priority 4 → sends DAH (960 ms onward), repeating indefinitely for as long as DAH stays held with no new DIT edge.
+
+**Why this is T5, not T8.** DAH — the paddle that opened the character at 0 ms — is also the paddle being held continuously; it is never the paddle that gets re-closed. DIT is what gets re-closed here (at 560 ms), and DIT did not open the character, so that reclosure is on the *squeeze* paddle, not the *opening* paddle — the same shape as the first C.2 scenario above, just with the hold made indefinite and the taps spread further apart. This is also why the raw numbers alone don't decide T5 vs. T8: it is *which paddle opened the character* that decides it. Swap the roles — make the re-closed paddle the one that opened, as in Annex C.3 below — and the identical-looking pattern becomes T8 instead.
+
 ### C.3 — T8 worked trace (the case that is easy to get wrong)
 
-| Paddle                              | Timeline                                             |
-| ----------------------------------- | ---------------------------------------------------- |
-| DAH (paddle A, opens the character) | 0–160 ms, released, **380–460 ms** (reclosure)       |
-| DIT (paddle B)                      | 100 ms onward, **held continuously, never released** |
+| Paddle                     | Timeline                                              |
+| --------------------------- | ------------------------------------------------------ |
+| DIT (opens the character)  | 10–160 ms, released, **560–640 ms** (reclosure)       |
+| DAH                         | 20 ms onward, **held continuously, never released**  |
+
+(DAH's continuous hold is shown starting at 20 ms — 10 ms after DIT's opening press — so that DIT is unambiguously the paddle that *opens* the character. T8 concerns re-closure of the opening paddle specifically, so the example needs a clear opening paddle to demonstrate it against.)
 
 Expected per Section 8/10 and T8:
-1. `0 ms`: DAH edge → `dah_memory=true`, `last_touched=DAH` → sends DAH (0–240 ms).
-2. `100 ms`: DIT edge arrives mid-DAH → `dit_memory=true`, `last_touched=DIT`. Captured per Section 9 (accepted during sending).
-3. `240–320 ms`: SPACING, then IDLE decision: `dah_memory` was already cleared when the DAH element started in step 1, so only `dit_memory` is set → Priority 2 → sends DIT (320–400 ms). Control has transferred to B, matching point 3/4.
-4. DIT paddle never releases, so absent a new edge, further IDLE decisions keep selecting DIT (Priority 4, single paddle held) — B keeps control, matching point 4.
-5. `380 ms`: DAH paddle (A) is re-closed — **while B is still held**. This is a fresh rising edge: `dah_memory=true`, `last_touched=DAH`.
-6. `400–480 ms`: SPACING, then at the next IDLE decision (480 ms): `dit_memory` was cleared when the DIT element started at 320 ms, so only `dah_memory` is set (from the edge at 380 ms) → Priority 2 → sends **DAH** (480–720 ms), even though B (DIT) never stopped being held — and even though A itself had already released by 460 ms. The guarantee fires purely off the memory flag, not the paddle levels.
-7. Control stays with DAH only for the guaranteed element sent in step 6; once `dah_memory` is consumed at its start (480 ms) and no new A edge has occurred, the next IDLE decision (800 ms) has no memory at all. Paddle A is not held (it released at 460 ms) but paddle B still is → Priority 4 → control reverts to B, which keeps sending DIT for as long as it stays held with no new edge.
+1. `10 ms`: DIT edge → `dit_memory=true`, `last_touched=DIT`. State is IDLE, so this immediately triggers a decision: only `dit_memory` is set → sends DIT (10–90 ms).
+2. `20 ms`: DAH edge arrives mid-DIT-send → `dah_memory=true`, `last_touched=DAH`. Captured per Section 9 (accepted during sending).
+3. `90–170 ms`: SPACING, then IDLE decision: `dit_memory` was already cleared when the DIT element started in step 1, so only `dah_memory` is set → Priority 2 → sends DAH (170–410 ms). Control has passed to DAH.
+4. `410–490 ms`: SPACING, then IDLE decision: no new edges have arrived since step 2 (consumed at the start of step 3), and DIT is not held — it released at 160 ms — but DAH still is → Priority 4 (single paddle held, no memory) → sends DAH again (490–730 ms). This is the plain "one paddle held, keep sending it" behavior; nothing T8-specific has happened yet.
+5. `560 ms`: DIT is re-closed — **while DAH is still held continuously**. This is a fresh rising edge on the paddle that opened the character: `dit_memory=true`, `last_touched=DIT`. Captured mid-DAH-send per Section 9.
+6. DIT releases again at 640 ms; this is irrelevant to the memory flag already latched in step 5 — the guarantee fires off the memory, not the paddle level (Section 5).
+7. `730–810 ms`: SPACING, then IDLE decision: `dah_memory` was cleared when the DAH element in step 4 started (490 ms), so only `dit_memory` is set (from the edge at 560 ms) → Priority 2 → sends **DIT** (810–890 ms) — the guaranteed reseize. Even though DAH never stopped being held, the flick at 560 ms still earns DIT one element, exactly as T8 requires.
+8. `890–970 ms`: SPACING, then IDLE decision: `dit_memory` was consumed at 810 ms and no new DIT edge has occurred since; DAH is still held with no competing memory → Priority 4 → control reverts to DAH (970–1210 ms), which keeps sending DAH indefinitely for as long as it stays held and no new DIT edge arrives.
 
-![Annex C.3 timing diagram — paddle A flicked again at 380 ms while paddle B stays held, forcing a guaranteed DAH reseize before control reverts to B][image-3]
+![Annex C.3 timing diagram — DIT (the opening paddle) flicked again at 560 ms while DAH stays held, forcing a guaranteed DIT reseize before control reverts to DAH](annex-c3-timing-diagram.png)
+
+**Why this matters in practice.** Ultimatic does not auto-alternate the way Iambic does: holding both paddles together does not, by itself, hand control back and forth. Getting a second occurrence of the paddle that opened the character — after control has already passed to the squeeze paddle — requires an actual release-and-reclose of the opening paddle, which is exactly the action T8 governs. T8 also covers the case where that reclosure is unintentional: a momentary, un-intended loss of contact on the held paddle (QST 1955 point 6's "just a flick!") must still be honored as a guaranteed element, not silently absorbed by whichever paddle currently has control. Treating T8 as a rare edge case is easy to do by eye; in practice it is the difference between a keyer that stays deterministic under real paddle contact bounce or an operator's momentary slip, and one that silently drops elements.
 
 ---
 
@@ -421,7 +449,3 @@ Expected per Section 8/10 and T8:
 - [ ] Tested against T1–T8 (Section 12), including T8 specifically, before calling the mode conformant.
 
 [1]:	https://www.worldradiohistory.com/Archive-DX/QST/50s/QST-1955-05.pdf
-
-[image-1]:	annex-c1-timing-diagram.png
-[image-2]:	annex-c2-timing-diagram.png
-[image-3]:	annex-c3-timing-diagram.png
