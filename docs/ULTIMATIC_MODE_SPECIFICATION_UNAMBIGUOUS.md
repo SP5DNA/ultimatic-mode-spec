@@ -1,6 +1,7 @@
 # Ultimatic Mode Specification (Unambiguous, Platform-Agnostic)
 
-**Author:** Paweł (SP5DNA)
+**Author:** Paweł (SP5DNA) + Claude AI
+
 **Status:** Normative core spec (Sections 1–14) + informative annexes (A–D)
 **Provenance:** This document is the primary normative spec of the Ultimatic-mode document set. It supersedes `ultimatic_specification.md` as the implementation reference; that document's historical text, worked timing examples, and checklist have been folded in below as informative annexes so nothing is lost. See also `ULTIMATIC_MODE_SPECIFICATION_RFC_STYLE.md` for the same requirements expressed as a compact RQ-ID checklist, useful for conformance audits.
 

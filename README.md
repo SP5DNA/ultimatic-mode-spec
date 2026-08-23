@@ -75,4 +75,4 @@ a legal opinion on that point.
 
 ## Author
 
-Paweł (SP5DNA)
+Paweł (SP5DNA) + Claude AI
