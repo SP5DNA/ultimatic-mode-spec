@@ -11,5 +11,5 @@ This revision clarifies which paddle presses create stored requests and corrects
 - Annex C.1 correctly identifies the 200–210 ms press as occurring during DAH. The 250–260 ms press demonstrates input during spacing.
 - The historical QST quotation is unchanged. Its relationship to the modern rules is made explicit.
 - Added T9–T12 and a check that compiles the C sketch directly from the specification and validates 28 timestamped traces.
-- Added reproducible C.1/C.2 diagram sources, with the established dark palette and layout.
+- Corrected C.1/C.2 diagrams while retaining the established dark palette and layout. Diagram-generation tools are maintained separately in the author's local archive.
 - Shortened the README to guide readers to the full specification in `docs`.
