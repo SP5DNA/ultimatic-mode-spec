@@ -1,12 +1,12 @@
 # Ultimatic Mode Specification
 
-A hardware-independent specification of Ultimatic CW keying for implementers and operators. Ultimatic lets a held paddle remain pressed while the opposite paddle takes control; it does not automatically alternate elements during a squeeze.
+A hardware-independent specification of Ultimatic CW keying for developers implementing a keyer in their own devices. Ultimatic lets a held paddle remain pressed while the opposite paddle takes control; it does not automatically alternate elements during a squeeze.
 
 **[Read the full specification →](docs/ULTIMATIC_MODE_SPECIFICATION_UNAMBIGUOUS.md)**
 
 **Updated 2026-10-19:** clarified paddle memory and same-type re-closure, corrected timing examples, and added executable conformance checks. [See what changed.](CHANGELOG.md)
 
-The document includes the selection and memory rules, reference pseudocode, conformance tests, timing diagrams, and the historical QST source. Start with Sections 3–10 for behavior, Section 12 for tests, or Annex C for worked examples.
+The document includes the selection and memory rules, reference pseudocode, conformance tests, timing diagrams, and the historical QST source. Start with Sections 3–10 for behavior, Section 12 for scenarios, or Annex C for worked examples. To check the reference sketch or reuse its timelines in your implementation, see the [reference check guide](tests/README.md).
 
 ## Scope and status
 

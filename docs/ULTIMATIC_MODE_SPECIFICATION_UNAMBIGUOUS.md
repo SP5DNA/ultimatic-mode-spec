@@ -145,6 +145,12 @@ During DAH, tap DIT twice before 320 ms and release both taps before that decisi
 
 Verify mark starts at 0, 320 and 480 ms for C.2, not one update later. At a cycle boundary, a new press is eligible before selection and a release removes the held level; an already-pending request still fires. Missed deadlines must be treated as integration errors, not silently converted into longer spaces.
 
+### Executable reference checks
+
+The repository includes a host-side check of the Annex B sketch against 28 timestamped input/output examples. See [the reference check guide](../tests/README.md) for requirements, the run command, covered cases and how to reuse the timelines when testing your own device implementation.
+
+Passing the script verifies the extracted reference sketch against those selected examples. It does not automatically test your firmware, exhaust all input sequences, or prove the historical correctness of this specification's interpretation of QST. The expected outputs follow the rules adopted here, including the explicit modern policy in Section 10.1. The normative requirements above take precedence over test fixtures if an inconsistency is found.
+
 ## 13. Out of scope
 
 Message memories, UI, WPM storage, sidetone synthesis, power management and radio electronics are outside the core. Input filtering must not be confused with a requirement to honor physical switch bounce as operator intent. Letter and word spacing policies are optional higher-layer features.
