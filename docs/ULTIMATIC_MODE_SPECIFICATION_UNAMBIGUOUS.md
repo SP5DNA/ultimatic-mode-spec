@@ -2,15 +2,15 @@
 
 **Author:** Paweł (SP5DNA) + Claude AI
 
-**Revision:** 2026-10-19
+**Revision:** 2026-10-20
 
-**Status:** Normative modern behavior (Sections 1–14), informative historical source and examples (Annexes A–D).
+**Status:** Normative implementation requirements with two accepted current-type re-closure policies (Sections 1–14); informative historical source, examples and checklist (Annexes A–D).
 
 ## 1. Purpose
 
 This specification defines deterministic Ultimatic behavior independently of hardware, programming language and scheduler. It preserves squeeze operation: a held first paddle can remain closed while the opposite paddle takes control; releasing the controlling paddle returns output to the other paddle if it is still held and no stored request has precedence.
 
-It defines a modern implementation policy, not an electrically exact replica of the 1955 circuit. The deliberate policy for re-pressing the current type is stated in Section 10.1. The historical source is preserved in Annex A.
+It defines deterministic implementation requirements, not an electrically exact replica of the 1955 circuit. Section 10.1 accepts two policies for re-pressing the current type: remembering the press or suppressing it. An implementation MUST document its choice. All other core requirements apply to both policies. The historical source is preserved in Annex A.
 
 ## 2. Normative terms
 
@@ -38,7 +38,7 @@ The engine MUST process input changes during marks and spaces. A press exactly a
 
 1. **Opposite-type memory:** a detected press of the type opposite to the current cycle MUST leave an outstanding request unless that type already has one. Release does not erase it.
 2. **Coalescing:** memory is one outstanding request per type, not a count of presses. Further accepted presses of an already-pending type MUST NOT add copies or move that request behind another one.
-3. **Current-type repetition:** a re-press of the current cycle's type MUST NOT queue another element during either its mark or its following space. A held paddle can repeat at the next decision.
+3. **Current-type re-closure:** an implementation MUST consistently apply one of the two policies in Section 10.1, symmetrically for DIT and DAH, during both the mark and its following space. Under either policy a held paddle can repeat at the next decision.
 4. **Order fidelity:** an earlier outstanding request MUST be served before a later opposite request. A new press MUST NOT cancel an earlier outstanding opposite request.
 5. **No preemption:** an input change MUST NOT truncate a mark or its required space.
 
@@ -50,7 +50,7 @@ Maintain:
 - `cycle_type`: DIT, DAH or NONE; retain it through SPACING.
 - `last_touched`: the type of the latest detected press, for choosing between two held paddles when no request is pending.
 - At most one pending DIT and one pending DAH, with their order of first acceptance.
-- Previous input levels and the current phase deadline.
+- The chosen current-type re-closure policy (Section 10.1), previous input levels and the current phase deadline.
 
 The pending requests may be represented by two flags plus an ordering field, or a bounded FIFO containing each type at most once. The FIFO is not a counter of repeated presses. Consume a request at the start of its mark.
 
@@ -59,7 +59,7 @@ The pending requests may be represented by two flags plus an ordering field, or 
 For each detected press of type P:
 
 1. Update `last_touched` to P.
-2. If a cycle is in progress and P equals `cycle_type`, do not create a memory request. This includes SPACING.
+2. If a cycle is in progress and P equals `cycle_type`, apply Section 10.1: under **suppress**, do not create a memory request; under **remember**, continue to step 3. This includes SPACING.
 3. Otherwise, append P if P is not already pending. Preserve any earlier pending request.
 
 In IDLE, a detected press is eligible for memory regardless of type. If two presses arrive before a decision, retain their order. Implementations SHOULD use real chronological ordering where available. Genuinely simultaneous or unresolvable edges require a documented deterministic tie-break. Annex B uses DIT before DAH; after both edges `last_touched` is DAH, but the first stored request is DIT.
@@ -85,11 +85,22 @@ Input processing remains active throughout both phases under Section 7. Timing m
 
 A paddle re-closed while the opposite cycle is in progress MUST be eligible for memory, including the paddle that opened the letter. This symmetric takeover is required even if the opposite paddle has remained held continuously. Historical T8 concerns this opposite-type takeover, not a re-press of the currently sounding type.
 
-### 10.1. Deliberate policy for the current type
+### 10.1. Two accepted policies for the current type
 
-A brief re-closure of the current type wholly within its mark or following space MUST NOT store another element. Holding that paddle through the next decision can produce another complete element. The rule is symmetric for DIT and DAH.
+An implementation MUST document and consistently apply one of these policies, symmetrically for DIT and DAH:
 
-This is an explicit modern policy chosen for predictable operation when moving from common Iambic A/B implementations. It is not claimed as a proven behavior of the original 1955 circuit. QST describes memory clearance at the start of a mark; analysis of its description and schematic suggests same-type retriggering may be possible. This has not been confirmed by an electrical simulation or a measurement of the original hardware. The source quotation is retained unchanged.
+| Policy | Brief re-closure of the current type during its mark or following space |
+| --- | --- |
+| **Remember current type** | Accept a request if that type is not already pending. Releasing the paddle does not erase it. |
+| **Suppress current type** | Do not store a request. Another element requires the paddle to remain held at the next decision, or a new press at or after that decision. |
+
+Both policies are acceptable under this specification. Holding a paddle through the next decision works under either policy. Memory remains one outstanding request per type: **remember** does not count clicks. Two taps before the first pending request is consumed still produce one stored element. A new tap after that request has been consumed at mark start can store one further element. An earlier pending opposite request retains precedence; neither policy cancels it.
+
+**Historical interpretation.** The QST description and schematic indicate memory clearance by a pulse at the start of a mark. Our analysis therefore suggests that a subsequent same-type re-closure could re-arm that memory: the original circuit most likely behaved like **remember current type**. This is an inference from the article and schematic, not a result confirmed by electrical simulation or measurement of the original hardware. It does not establish electrical equivalence for every boundary condition. The source quotation in Annex A is unchanged.
+
+**Operational choice.** The **suppress current type** policy is intended to avoid surprising operators accustomed to the same-type re-closure suppression found in common Iambic A/B implementations; this is not a claim about every iambic keyer. The difference has limited operational significance during typical Ultimatic squeeze operation, where a paddle remains held and the opposite paddle takes control. It can nevertheless change the transmitted sequence for deliberate release-and-repress input, so the policy must be stated and tested. C.2 retains held-squeeze D, while C.2a restores the two-tap D example and compares both policies.
+
+Policy selection is an implementation or configuration choice. If selectable, change it only while the engine is idle with no pending requests and both paddles released; changing policy must not erase or reinterpret work already accepted.
 
 ## 11. Determinism requirements
 
@@ -129,9 +140,9 @@ A detected brief opposite-type press during the 1-unit space affects the next de
 
 Start with DIT. Hold DAH and allow DAH to control the cycle. While DAH remains held, briefly re-close DIT during DAH or its space. DIT MUST be remembered and sent next unless an earlier pending request has precedence. See C.3.
 
-### T9: Current-type re-closure does not queue
+### T9: Current-type re-closure follows the declared policy
 
-At 15 WPM start DAH at 0 ms. Release at 40 ms, re-press at 120 ms and release at 160 ms: only DAH 0–240 ms is sent. Re-pressing at 280 ms and releasing at 290 ms also produces no second DAH. Repeat with the types swapped, using the corresponding cycle duration.
+At 15 WPM start DAH at 0 ms. Release at 40 ms, re-press at 120 ms and release at 160 ms. Test separately a re-press at 280 ms released at 290 ms. Under **suppress**, each timeline produces only DAH 0–240 ms. Under **remember**, each produces DAH 0–240 ms and DAH 320–560 ms. Test the mirrored DIT timelines: first mark 0–80 ms, next mark 160–240 ms, with a re-press inside the mark or following space. Also test C.2a under the declared policy.
 
 ### T10: Current-type hold at the next decision
 
@@ -139,7 +150,7 @@ Start DAH at 0 ms, release and re-press it during the mark or space, then hold t
 
 ### T11: Repeated requests coalesce
 
-During DAH, tap DIT twice before 320 ms and release both taps before that decision. Produce one DIT at 320 ms, not two. Test the mirrored case and ensure the original pending request keeps its order.
+During DAH, tap DIT twice before 320 ms and release both taps before that decision. Produce one DIT at 320 ms, not two. Test the mirrored case and ensure the original pending request keeps its order. Under **remember**, also re-press the current type twice after its mark starts but before the next decision: these taps store only one further element, not two. Repeat with DIT and DAH swapped.
 
 ### T12: Exact deadlines
 
@@ -147,9 +158,9 @@ Verify mark starts at 0, 320 and 480 ms for C.2, not one update later. At a cycl
 
 ### Executable reference checks
 
-The repository includes a host-side check of the Annex B sketch against 28 timestamped input/output examples. See [the reference check guide](../tests/README.md) for requirements, the run command, covered cases and how to reuse the timelines when testing your own device implementation.
+The repository includes a host-side check of the Annex B sketch against timestamped input/output examples under both accepted policies. See [the reference check guide](../tests/README.md) for requirements, the run command, covered cases and how to reuse the timelines when testing your own device implementation.
 
-Passing the script verifies the extracted reference sketch against those selected examples. It does not automatically test your firmware, exhaust all input sequences, or prove the historical correctness of this specification's interpretation of QST. The expected outputs follow the rules adopted here, including the explicit modern policy in Section 10.1. The normative requirements above take precedence over test fixtures if an inconsistency is found.
+Passing the script verifies the extracted reference sketch against those selected examples. It does not automatically test your firmware, exhaust all input sequences, or prove the historical correctness of this specification's interpretation of QST. The expected outputs follow the rules adopted here, including the two explicitly accepted policies in Section 10.1. The normative requirements above take precedence over test fixtures if an inconsistency is found.
 
 ## 13. Out of scope
 
@@ -167,7 +178,7 @@ Annex B uses a monotonic clock and a bounded pending FIFO. The example constant 
 
 Primary source: **QST Magazine, May 1955**, "Summary of Actions of the Keys."
 Scanned original available at: [https://www.worldradiohistory.com/Archive-DX/QST/50s/QST-1955-05.pdf][1]
-Reproduced unchanged as historical evidence. In this quotation, "character" often means a dot or dash element, not a whole Morse letter. The modern memory policy in Section 10.1 is an explicit design choice; not every normative rule is claimed to be a direct restatement of this source.
+Reproduced unchanged as historical evidence. In this quotation, "character" often means a dot or dash element, not a whole Morse letter. The two accepted memory policies in Section 10.1 are explicit specification choices; their historical relationship is discussed there. Not every normative rule is claimed to be a direct restatement of this source.
 
 1. A single character is generated by momentary or prolonged closure of a key. The character is held by the memory for a positive time-base pulse if the key is released prior to that pulse.
 
@@ -183,13 +194,13 @@ Reproduced unchanged as historical evidence. In this quotation, "character" ofte
 
 7. In recapitulation, any closure of a key guarantees at least one character of that type, transmitted in correct relationship to the order of closure, regardless of intervening selective motions. Whenever a key makes contact, the output subsequent to the character in progress corresponds to that key until the other key makes contact or the first key is released.
 
-**Relationship to this specification:** Points 1 and 3 support stored requests and preservation of the first outstanding request (Sections 5–8). Points 2, 4 and 5 describe repetition and transfer between held paddles. Point 6 supports symmetric re-closure while the opposite type controls the cycle (Section 10, T8). Point 7 summarizes the operator-visible intent; it must not be interpreted here as a counter of every physical closure. Section 10.1 states the modern same-type re-closure policy and the limits of the historical comparison. No unconditional cancellation of an earlier outstanding opposite request is introduced.
+**Relationship to this specification:** Points 1 and 3 support stored requests and preservation of the first outstanding request (Sections 5–8). Points 2, 4 and 5 describe repetition and transfer between held paddles. Point 6 supports symmetric re-closure while the opposite type controls the cycle (Section 10, T8). Point 7 summarizes the operator-visible intent; it must not be interpreted here as a counter of every physical closure. Section 10.1 states both accepted same-type re-closure policies and the limits of the historical comparison. No unconditional cancellation of an earlier outstanding opposite request is introduced.
 
 ---
 
 # Annex B — Reference pseudocode
 
-This C-style sketch implements Sections 6–9. Provide `key_down()` and `key_up()` and call the engine at every input change and deadline. It is not a free-running loop that may skip deadlines. Two unique pending types preserve order; current-type edges update held-paddle ordering but do not queue an element.
+This C-style sketch implements Sections 6–9. Provide `key_down()` and `key_up()` and call the engine at every input change and deadline. It is not a free-running loop that may skip deadlines. Two unique pending types preserve order. Current-type edges always update held-paddle ordering; whether they also queue a request depends on the declared policy. The sketch defaults to **suppress current type**, preserving the previous reference behavior. Set `reclosure_policy` to `REMEMBER_CURRENT_TYPE` before processing input to select the other accepted policy; apply the configuration restrictions in Section 10.1.
 
 ```c
 #include <stdbool.h>
@@ -198,6 +209,8 @@ This C-style sketch implements Sections 6–9. Provide `key_down()` and `key_up(
 
 typedef enum { NONE, DIT, DAH } Paddle;
 typedef enum { IDLE, SENDING_DIT, SENDING_DAH, SPACING } State;
+typedef enum { SUPPRESS_CURRENT_TYPE, REMEMBER_CURRENT_TYPE } ReclosurePolicy;
+static ReclosurePolicy reclosure_policy = SUPPRESS_CURRENT_TYPE;
 static State state = IDLE;
 static Paddle cycle_type = NONE, last_touched = NONE;
 // At most one outstanding request per type, in order of first acceptance.
@@ -212,7 +225,8 @@ void key_up(void);
 
 static void accept_edge(Paddle p) {
     last_touched = p;
-    if (state != IDLE && p == cycle_type) return;
+    if (reclosure_policy == SUPPRESS_CURRENT_TYPE &&
+        state != IDLE && p == cycle_type) return;
     for (unsigned i = 0; i < pending_count; ++i)
         if (pending[i] == p) return; // coalesce; do not move its position
     assert(pending_count < 2);
@@ -300,7 +314,27 @@ Result: **DAH (0–240), SPACE (240–320), DIT (320–400), SPACE (400–480), 
 
 The DIT press at 300 ms is accepted during the DAH space. Its request is consumed when the first DIT starts at 320 ms. DIT remains held at 480 ms, so the second DIT starts without another press. DAH has been released at 470 ms. Releasing DIT at 520 ms does not truncate the mark ending at 560 ms. Both paddles are released before the next decision at 640 ms, so no further element follows.
 
-A brief DIT re-press wholly inside 320–480 ms would not guarantee the second dot under Section 10.1. This example illustrates T2/T4; C.2b below remains the worked re-closure example for T5.
+This held-squeeze example illustrates T2/T4 and produces D under **both** accepted policies. A brief DIT re-press wholly inside 320–480 ms instead depends on the Section 10.1 policy, as C.2a shows. C.2b remains the opposite-type re-closure example for T5.
+
+### C.2a — Letter D (`-··`) from two DIT taps: policy comparison
+
+This restores the earlier C.2 input timeline alongside the held-squeeze example above. It demonstrates **remember current type**, not a guarantee shared by both policies and not the opposite-type re-closure of T5.
+
+| Paddle | Timeline |
+| --- | --- |
+| DAH | held 0–470 ms |
+| DIT | pressed 300–340 ms, released, pressed again 380–420 ms |
+
+![Annex C.2a timing diagram — DAH held 0–470 ms and DIT tapped 300–340 and 380–420 ms; remember-current-type output is DAH 0–240, DIT 320–400, DIT 480–560](annex-c2a-timing-diagram.png)
+
+| Policy | Output marks | Result |
+| --- | --- | --- |
+| **Remember current type** | DAH 0–240, DIT 320–400, DIT 480–560 ms | **D** (`-··`) |
+| **Suppress current type** | DAH 0–240, DIT 320–400 ms | **N** (`-·`) |
+
+The first DIT edge at 300 ms arrives during the DAH space and stores a request under either policy. That request is consumed when DIT starts at 320 ms. The second DIT edge at 380 ms arrives during the DIT mark, after its first request has been consumed. **Remember** stores one further DIT, which is sent at 480 ms even though both paddles are released by then. **Suppress** ignores that edge for memory, so output ends after the first DIT. DAH releases at 470 ms in both cases; it is not held indefinitely.
+
+The remembered variant is most likely closer to the historical circuit, subject to the evidence limits in Section 10.1. The suppressed variant remains acceptable for the operational rationale stated there. Swapping DIT and DAH uses the same policy with the corresponding mark durations (T9); this is not a DIT-only exception.
 
 ### C.2b — T5 with an indefinitely held paddle
 
@@ -354,7 +388,7 @@ Expected per Section 8/10 and T8:
 
 - [ ] Distinguish a mark from its full cycle, including the following space.
 - [ ] Capture opposite-type logical presses during both phases.
-- [ ] Do not queue current-type re-presses during either phase.
+- [ ] Declare and test **remember current type** or **suppress current type**, symmetrically during both phases.
 - [ ] Keep at most one outstanding request per type, preserving acceptance order.
 - [ ] Never cancel an earlier pending opposite request on a later press.
 - [ ] Use live `last_touched` for held-paddle selection after pending work is served.
@@ -363,6 +397,6 @@ Expected per Section 8/10 and T8:
 - [ ] Select at the space deadline without an extra scheduler tick.
 - [ ] Define simultaneous-edge ordering and boundary event ordering.
 - [ ] Specify input filtering and timing resolution separately from memory policy.
-- [ ] Pass T1–T12, the C.1–C.3 timelines, and their mirrored versions.
+- [ ] Pass T1–T12, the C.1–C.3 timelines (including the policy-specific C.2a result), and their mirrored versions under the declared policy.
 
 [1]: https://www.worldradiohistory.com/Archive-DX/QST/50s/QST-1955-05.pdf

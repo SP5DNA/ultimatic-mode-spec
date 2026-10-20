@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-20
+
+Both current-type re-closure policies are now acceptable. Implementers MUST document whether a new same-type press during the current mark or its following space is remembered or suppressed. This replaces the suppression-only requirement of the 2026-10-19 revision.
+
+- Retained the held-squeeze D example C.2, which works under both policies. Restored its earlier two-DIT-tap timeline as C.2a, with a diagram for the remembered variant and explicit D versus N results for the two policies.
+- Analysis of the QST description and schematic suggests the original circuit most likely remembered same-type re-closure after memory clearance at mark start. This remains an inference, without electrical simulation or original-hardware measurement.
+- Suppression remains accepted to limit surprise for operators accustomed to this behavior in common Iambic A/B implementations. The difference has limited significance in typical squeeze use but can change a release-and-repress sequence.
+- Added an explicit policy choice to the reference sketch; the default remains suppression. Updated T9/T11 and the reference checks to exercise both policies, mirrored DIT/DAH cases, coalescing and pending-request order.
+- Opposite-type memory, one pending request per type, timing, squeeze takeover and return remain common requirements. The historical quotation is unchanged. Diagram-generation tools remain in the author's local archive.
+
 ## 2026-10-19
 
 This revision clarifies which paddle presses create stored requests and corrects the worked timing examples. Implementers using the previous reference pseudocode should review Sections 5–10 and update their conformance checks.
