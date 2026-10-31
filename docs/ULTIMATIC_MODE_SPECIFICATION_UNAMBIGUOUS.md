@@ -2,7 +2,7 @@
 
 **Author:** Paweł (SP5DNA) + Claude AI
 
-**Revision:** 2026-10-20
+**Revision:** 2026-11-01
 
 **Status:** Normative implementation requirements with two accepted current-type re-closure policies (Sections 1–14); informative historical source, examples and checklist (Annexes A–D).
 
@@ -10,7 +10,7 @@
 
 This specification defines deterministic Ultimatic behavior independently of hardware, programming language and scheduler. It preserves squeeze operation: a held first paddle can remain closed while the opposite paddle takes control; releasing the controlling paddle returns output to the other paddle if it is still held and no stored request has precedence.
 
-It defines deterministic implementation requirements, not an electrically exact replica of the 1955 circuit. Section 10.1 accepts two policies for re-pressing the current type: remembering the press or suppressing it. An implementation MUST document its choice. All other core requirements apply to both policies. The historical source is preserved in Annex A.
+It defines deterministic implementation requirements, not an electrically exact replica of the 1955 circuit. Section 10.1 accepts two policies for re-pressing the current type: remembering the press or suppressing it. An implementation MUST document its choice. For software implementations, suppression is recommended; remembering is retained as an accepted historical variant (Section 10.1, C.2a). All other core requirements apply to both policies. The historical source is preserved in Annex A.
 
 ## 2. Normative terms
 
@@ -94,11 +94,13 @@ An implementation MUST document and consistently apply one of these policies, sy
 | **Remember current type** | Accept a request if that type is not already pending. Releasing the paddle does not erase it. |
 | **Suppress current type** | Do not store a request. Another element requires the paddle to remain held at the next decision, or a new press at or after that decision. |
 
-Both policies are acceptable under this specification. Holding a paddle through the next decision works under either policy. Memory remains one outstanding request per type: **remember** does not count clicks. Two taps before the first pending request is consumed still produce one stored element. A new tap after that request has been consumed at mark start can store one further element. An earlier pending opposite request retains precedence; neither policy cancels it.
+**Software recommendation.** Software implementations SHOULD use **suppress current type**. **Remember current type** remains acceptable as a historical variant, but is neither required nor recommended for practical Ultimatic operation. C.2a is included as a historical curiosity inferred from the QST article and schematic, not as a feature request or an instruction to add this behavior to software.
+
+Both policies remain acceptable under this specification. Holding a paddle through the next decision works under either policy. Memory remains one outstanding request per type: **remember** does not count clicks. Two taps before the first pending request is consumed still produce one stored element. A new tap after that request has been consumed at mark start can store one further element. An earlier pending opposite request retains precedence; neither policy cancels it.
 
 **Historical interpretation.** The QST description and schematic indicate memory clearance by a pulse at the start of a mark. Our analysis therefore suggests that a subsequent same-type re-closure could re-arm that memory: the original circuit most likely behaved like **remember current type**. This is an inference from the article and schematic, not a result confirmed by electrical simulation or measurement of the original hardware. It does not establish electrical equivalence for every boundary condition. The source quotation in Annex A is unchanged.
 
-**Operational choice.** The **suppress current type** policy is intended to avoid surprising operators accustomed to the same-type re-closure suppression found in common Iambic A/B implementations; this is not a claim about every iambic keyer. The difference has limited operational significance during typical Ultimatic squeeze operation, where a paddle remains held and the opposite paddle takes control. It can nevertheless change the transmitted sequence for deliberate release-and-repress input, so the policy must be stated and tested. C.2 retains held-squeeze D, while C.2a restores the two-tap D example and compares both policies.
+**Operational choice.** The **suppress current type** policy is intended to avoid surprising operators accustomed to the same-type re-closure suppression found in common Iambic A/B implementations; this is not a claim about every iambic keyer. Remembering same-type re-closure offers no practical advantage in typical Ultimatic squeeze operation: a paddle remains held to repeat elements, while the opposite paddle takes control when pressed. There is therefore no practical need to implement same-type re-closure memory for that operating technique. It can nevertheless change the transmitted sequence for deliberate release-and-repress input, so the policy must be stated and tested. C.2 shows the practical held-squeeze D example. C.2a documents a probable historical circuit characteristic and compares the resulting outputs; it is not a recommended operating technique.
 
 Policy selection is an implementation or configuration choice. If selectable, change it only while the engine is idle with no pending requests and both paddles released; changing policy must not erase or reinterpret work already accepted.
 
@@ -200,7 +202,7 @@ Reproduced unchanged as historical evidence. In this quotation, "character" ofte
 
 # Annex B — Reference pseudocode
 
-This C-style sketch implements Sections 6–9. Provide `key_down()` and `key_up()` and call the engine at every input change and deadline. It is not a free-running loop that may skip deadlines. Two unique pending types preserve order. Current-type edges always update held-paddle ordering; whether they also queue a request depends on the declared policy. The sketch defaults to **suppress current type**, preserving the previous reference behavior. Set `reclosure_policy` to `REMEMBER_CURRENT_TYPE` before processing input to select the other accepted policy; apply the configuration restrictions in Section 10.1.
+This C-style sketch implements Sections 6–9. Provide `key_down()` and `key_up()` and call the engine at every input change and deadline. It is not a free-running loop that may skip deadlines. Two unique pending types preserve order. Current-type edges always update held-paddle ordering; whether they also queue a request depends on the declared policy. The sketch defaults to the recommended **suppress current type** policy, preserving the previous reference behavior. Set `reclosure_policy` to `REMEMBER_CURRENT_TYPE` before processing input to select the other accepted policy; apply the configuration restrictions in Section 10.1.
 
 ```c
 #include <stdbool.h>
@@ -316,9 +318,11 @@ The DIT press at 300 ms is accepted during the DAH space. Its request is consume
 
 This held-squeeze example illustrates T2/T4 and produces D under **both** accepted policies. A brief DIT re-press wholly inside 320–480 ms instead depends on the Section 10.1 policy, as C.2a shows. C.2b remains the opposite-type re-closure example for T5.
 
-### C.2a — Letter D (`-··`) from two DIT taps: policy comparison
+### C.2a — Historical curiosity: letter D (`-··`) from two DIT taps
 
-This restores the earlier C.2 input timeline alongside the held-squeeze example above. It demonstrates **remember current type**, not a guarantee shared by both policies and not the opposite-type re-closure of T5.
+**Historical curiosity — informative, not an implementation recommendation.** This timeline illustrates a probable characteristic of the original Ultimatic circuit inferred from the QST article and schematic. It has not been confirmed by electrical simulation or measurement of the original hardware. In typical Ultimatic squeeze operation, same-type re-closure memory offers no practical advantage: hold the paddle to repeat elements, as C.2 shows. Software implementations SHOULD use **suppress current type** (Section 10.1); implementing the remembered behavior shown here is neither necessary nor recommended for that use.
+
+This example demonstrates **remember current type**, not a guarantee shared by both policies and not the opposite-type re-closure of T5. It is retained to document the historical interpretation; that variant remains acceptable.
 
 | Paddle | Timeline |
 | --- | --- |
@@ -334,7 +338,7 @@ This restores the earlier C.2 input timeline alongside the held-squeeze example 
 
 The first DIT edge at 300 ms arrives during the DAH space and stores a request under either policy. That request is consumed when DIT starts at 320 ms. The second DIT edge at 380 ms arrives during the DIT mark, after its first request has been consumed. **Remember** stores one further DIT, which is sent at 480 ms even though both paddles are released by then. **Suppress** ignores that edge for memory, so output ends after the first DIT. DAH releases at 470 ms in both cases; it is not held indefinitely.
 
-The remembered variant is most likely closer to the historical circuit, subject to the evidence limits in Section 10.1. The suppressed variant remains acceptable for the operational rationale stated there. Swapping DIT and DAH uses the same policy with the corresponding mark durations (T9); this is not a DIT-only exception.
+The remembered variant is most likely closer to the historical circuit, subject to the evidence limits in Section 10.1. The suppressed variant is recommended for software implementations for the operational rationale stated there. Swapping DIT and DAH uses the same policy with the corresponding mark durations (T9); this is not a DIT-only exception.
 
 ### C.2b — T5 with an indefinitely held paddle
 

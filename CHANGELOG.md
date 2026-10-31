@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-01
+
+Clarified the purpose of C.2a: it is an informative historical curiosity inferred from the QST description and schematic, not a software feature recommendation or a required operating technique.
+
+- Software implementations SHOULD suppress current-type re-closure. Remembering it offers no practical advantage in typical Ultimatic squeeze operation, where holding a paddle already repeats elements.
+- The remembered variant remains accepted for historical interest, but is neither required nor recommended for practical operation. Historical behavior is still described as probable, without electrical simulation or original-hardware measurement.
+- Updated Section 10.1, C.2a, the README and reference-check guidance. The reference code, test timelines, diagrams and original QST quotation are unchanged.
+
 ## 2026-10-20
 
 Both current-type re-closure policies are now acceptable. Implementers MUST document whether a new same-type press during the current mark or its following space is remembered or suppressed. This replaces the suppression-only requirement of the 2026-10-19 revision.

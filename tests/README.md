@@ -2,6 +2,8 @@
 
 `test_reference.py` checks that the C-style reference sketch in Annex B produces the output timelines required by this specification under both accepted current-type re-closure policies. It is an executable companion to Section 12 and Annex C, intended to help developers implement Ultimatic in their own devices.
 
+**Implementation guidance:** Section 10.1 recommends suppression for software. The remembered variant remains accepted and is tested to keep the historical comparison in C.2a consistent; its presence in these checks is not a recommendation to implement it.
+
 ## Run the checks
 
 From the repository root:
